@@ -1,0 +1,2 @@
+-> How runtime struct of unbuffered and nil channel looks like
+-> Sudog in respect to linux understanding
