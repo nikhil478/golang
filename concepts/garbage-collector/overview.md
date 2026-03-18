@@ -20,3 +20,8 @@ Note: Existence of a gc is not guaranteed by GO specification, only that the und
     - Prevent memory leaks via references
 4. Arena-style allocation (simulate in Go) : Go doesn’t officially support arenas (except experimental), but you can mimic it.
     - Group objects and discard them together.
+
+
+
+## memory that doesn't need to be managed by the GC
+
