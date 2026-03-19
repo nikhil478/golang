@@ -1,0 +1,1 @@
+Resource : https://go.dev/doc/diagnostics
