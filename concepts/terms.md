@@ -1,0 +1,1 @@
+A literal is: A fixed value written directly in code that represents itself.
