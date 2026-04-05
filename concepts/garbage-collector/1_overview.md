@@ -45,7 +45,7 @@ In the context of this doc, gc refers to tracing gc, which identifies in use, so
 - Object: An object is a dynamically allocated piece of memory that contains one or more Go values
 
 - Pointer: A memory address that references any value within an object. This naturally includes Go values of the form *T, but also includes parts of built in Go values,
-             but also includes parts of built-in Go values. Strings, slices, channels, maps, and interface values all contain memory addresses that the GC must trace
+-> Strings, slices, channels, maps, and interface values all contain memory addresses that the GC must trace
 
 Together, objects and pointers to other objects form the object graph. To identify live memory, the GC walks the object graph starting at the program's roots, pointers that identify objects that are definitely in-use by the program. Two examples of roots are local variables and global variables. The process of walking the object graph is referred to as scanning. Another phrase you might see in the Go documentation is whether an object is reachable, which just means that the object can be discovered by the scanning process. Note also that, with one exception, once memory becomes unreachable, it stays unreachable.
 
