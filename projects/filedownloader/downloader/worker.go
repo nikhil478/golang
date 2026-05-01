@@ -2,35 +2,37 @@ package downloader
 
 import (
 	"context"
-	"log"
+	"errors"
 	"sync"
 )
 
-type Job struct {
-	URL  string
-	Path string
+type WorkerPool interface {
+	SubmitJob(job Job)
+	Close()
+	Wait()
 }
 
-type WorkerPool struct {
+type workerPool struct {
 	client *Client
 	wg     sync.WaitGroup
 	jobCh  chan Job
+
+	retry *RetryHandler
 }
 
-func NewWorkerPool(client *Client) *WorkerPool {
-	return &WorkerPool{client: client}
-}
-
-func (wp *WorkerPool) Run(ctx context.Context, workers int, buffer int) {
+func NewWorkerPool(ctx context.Context, client *Client, workers int, buffer int) WorkerPool {
+	wp := &workerPool{client: client}
 	wp.jobCh = make(chan Job, buffer)
+	wp.retry = NewRetryHandler(wp)
 	for range workers {
 		wp.wg.Go(func() {
 			wp.worker(ctx, wp.jobCh)
 		})
 	}
+	return wp
 }
 
-func (wp *WorkerPool) worker(ctx context.Context, jobCh chan Job) {
+func (wp *workerPool) worker(ctx context.Context, jobCh chan Job) {
 	for {
 		select {
 		case job, ok := <-jobCh:
@@ -38,7 +40,7 @@ func (wp *WorkerPool) worker(ctx context.Context, jobCh chan Job) {
 				return
 			}
 			if err := wp.client.Download(job.URL, job.Path); err != nil {
-				log.Printf("download failed: %v", err)
+				wp.retry.Handle(job, errors.New("error while downloading"))
 			}
 		case <-ctx.Done():
 			return
@@ -46,14 +48,14 @@ func (wp *WorkerPool) worker(ctx context.Context, jobCh chan Job) {
 	}
 }
 
-func (wp *WorkerPool) SubmitJob(job Job) {
+func (wp *workerPool) SubmitJob(job Job) {
 	wp.jobCh <- job
 }
 
-func (wp *WorkerPool) Close() {
+func (wp *workerPool) Close() {
 	close(wp.jobCh)
 }
 
-func (wp *WorkerPool) Wait() {
+func (wp *workerPool) Wait() {
 	wp.wg.Wait()
 }
