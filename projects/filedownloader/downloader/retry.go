@@ -43,5 +43,5 @@ func (r *RetryHandler) Handle(ctx context.Context, job Job, err error) {
 }
 
 func backoff(attempt int) time.Duration {
-	return time.Duration(1<<attempt) * 100 * time.Millisecond
+	return time.Duration(attempt) * 100 * time.Millisecond
 }

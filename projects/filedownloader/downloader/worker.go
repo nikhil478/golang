@@ -59,11 +59,6 @@ func (wp *workerPool) worker() {
 			if !ok {
 				return
 			}
-
-			if job.Attempts == 0 {
-				wp.retry.Handle(wp.ctx, job, errors.New("from server"))
-			}
-
 			if err := wp.client.Download(job.URL, job.Path); err != nil {
 				wp.retry.Handle(wp.ctx, job, errors.New("from server"))
 			}
@@ -93,19 +88,18 @@ func (wp *workerPool) SubmitJob(ctx context.Context, job Job) error {
 
 func (wp *workerPool) Close() {
 
-	// grace := time.Second
-	// timer := time.NewTimer(grace)
-	// <-timer.C
-
 	// stop accepting new jobs
+	grace := 1 * time.Second
+	timer := time.NewTimer(grace)
+	<-timer.C
+
 	wp.mu.Lock()
 	wp.closing = true
 	wp.mu.Unlock()
 
 	// allow in-flight retries to enqueue (grace period)
 	// you can tweak this duration
-	grace := 3 * time.Second
-	timer := time.NewTimer(grace)
+	timer = time.NewTimer(grace)
 	<-timer.C
 
 	// stop workers + retries
