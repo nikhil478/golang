@@ -7,7 +7,7 @@ import (
 )
 
 type WorkerPool interface {
-	SubmitJob(job Job)
+	SubmitJob(ctx context.Context, job Job) error
 	Close()
 	Wait()
 }
@@ -23,7 +23,7 @@ type workerPool struct {
 func NewWorkerPool(ctx context.Context, client *Client, workers int, buffer int) WorkerPool {
 	wp := &workerPool{client: client}
 	wp.jobCh = make(chan Job, buffer)
-	wp.retry = NewRetryHandler(wp)
+	NewRetryScheduler(ctx, wp)
 	for range workers {
 		wp.wg.Go(func() {
 			wp.worker(ctx, wp.jobCh)
@@ -48,8 +48,9 @@ func (wp *workerPool) worker(ctx context.Context, jobCh chan Job) {
 	}
 }
 
-func (wp *workerPool) SubmitJob(job Job) {
+func (wp *workerPool) SubmitJob(ctx context.Context, job Job) error {
 	wp.jobCh <- job
+	return nil
 }
 
 func (wp *workerPool) Close() {
