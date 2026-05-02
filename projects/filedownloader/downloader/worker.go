@@ -22,9 +22,6 @@ type workerPool struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	mu      sync.Mutex
-	closing bool
 }
 
 func NewWorkerPool(parent context.Context, client *Client, workers int, buffer int) WorkerPool {
@@ -59,6 +56,7 @@ func (wp *workerPool) worker() {
 			if !ok {
 				return
 			}
+			
 			if err := wp.client.Download(job.URL, job.Path); err != nil {
 				wp.retry.Handle(wp.ctx, job, errors.New("from server"))
 			}
@@ -70,14 +68,6 @@ func (wp *workerPool) worker() {
 }
 
 func (wp *workerPool) SubmitJob(ctx context.Context, job Job) error {
-	wp.mu.Lock()
-	closing := wp.closing
-	wp.mu.Unlock()
-
-	if closing {
-		return errors.New("worker pool is closing")
-	}
-
 	select {
 	case wp.jobCh <- job:
 		return nil
@@ -89,17 +79,8 @@ func (wp *workerPool) SubmitJob(ctx context.Context, job Job) error {
 func (wp *workerPool) Close() {
 
 	// stop accepting new jobs
-	grace := 1 * time.Second
+	grace := 3 * time.Second
 	timer := time.NewTimer(grace)
-	<-timer.C
-
-	wp.mu.Lock()
-	wp.closing = true
-	wp.mu.Unlock()
-
-	// allow in-flight retries to enqueue (grace period)
-	// you can tweak this duration
-	timer = time.NewTimer(grace)
 	<-timer.C
 
 	// stop workers + retries
