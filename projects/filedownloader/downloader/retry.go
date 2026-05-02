@@ -20,11 +20,9 @@ func (r *RetryHandler) Handle(job Job, err error) {
 	}
 
 	job.Attempts++
-	go func(j Job) {
-		delay := backoff(j.Attempts)
-		time.Sleep(delay)
-		r.pool.SubmitJob(j)
-	}(job)
+	delay := backoff(job.Attempts)
+	time.Sleep(delay)
+	r.pool.SubmitJob(job)
 }
 
 func backoff(attempt int) time.Duration {
