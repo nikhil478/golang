@@ -1,0 +1,45 @@
+services:
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+
+    command: >
+      sh -c "
+      dd if=/dev/zero of=/usr/share/nginx/html/5GB.bin bs=1M count=5120 &&
+      nginx -g 'daemon off;'
+      "
+
+  downloader:
+    image: alpine:latest
+
+    depends_on:
+      - nginx
+
+    command: >
+      sh -c "
+      apk add --no-cache wget &&
+      while true; do
+        wget -O /dev/null http://nginx/5GB.bin;
+      done
+      "
+
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+
+    ports:
+      - '19999:19999'
+
+    cap_add:
+      - SYS_PTRACE
+
+    security_opt:
+      - apparmor=unconfined
+
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
