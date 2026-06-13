@@ -1,1 +1,6 @@
 dump
+projects/ai/knowledgebuilder/.env
+projects/ai/knowledgebuilder/jira.db
+projects/ai/knowledgebuilder/data
+projects/ai/knowledgebuilder/workspace
+projects/ai/knowledgebuilder/knowledge
