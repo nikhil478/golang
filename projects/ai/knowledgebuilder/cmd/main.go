@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/nikhil478/knowledgebuilder/internal/classifier"
 	"github.com/nikhil478/knowledgebuilder/internal/knowledge"
 	"github.com/nikhil478/knowledgebuilder/internal/models"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+
+	godotenv.Load()
+
 	if len(os.Args) < 2 {
 		log.Fatal("usage: jira-analyzer <ticket-key>")
 	}
