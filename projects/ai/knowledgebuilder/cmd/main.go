@@ -8,6 +8,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/nikhil478/knowledgebuilder/internal/analyzers/images"
 	"github.com/nikhil478/knowledgebuilder/internal/analyzers/logs"
 	"github.com/nikhil478/knowledgebuilder/internal/classifier"
 	"github.com/nikhil478/knowledgebuilder/internal/client/jira"
@@ -37,32 +38,15 @@ func main() {
 	}
 	defer db.Close()
 
-	workspaceDir := filepath.Join(
-		"workspace",
-		ticketID,
-	)
+	workspaceDir := filepath.Join("workspace", ticketID)
+	attachmentsDir := filepath.Join(workspaceDir, "attachments")
+	knowledgeDir := filepath.Join(workspaceDir, "knowledge")
 
-	attachmentsDir := filepath.Join(
-		workspaceDir,
-		"attachments",
-	)
-
-	knowledgeDir := filepath.Join(
-		workspaceDir,
-		"knowledge",
-	)
-
-	if err := os.MkdirAll(
-		attachmentsDir,
-		0755,
-	); err != nil {
+	if err := os.MkdirAll(attachmentsDir, 0755); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := os.MkdirAll(
-		knowledgeDir,
-		0755,
-	); err != nil {
+	if err := os.MkdirAll(knowledgeDir, 0755); err != nil {
 		log.Fatal(err)
 	}
 
@@ -72,67 +56,36 @@ func main() {
 		cfg.JiraToken,
 	)
 
-	fmt.Printf(
-		"\nLoading JIRA issue %s\n",
-		ticketID,
-	)
+	fmt.Printf("\nLoading JIRA issue %s\n", ticketID)
 
-	issue, err := jiraClient.GetIssue(
-		ticketID,
-	)
-
+	issue, err := jiraClient.GetIssue(ticketID)
 	if err != nil {
-		log.Fatalf(
-			"failed to load jira issue: %v",
-			err,
-		)
+		log.Fatalf("failed to load jira issue: %v", err)
 	}
 
-	fmt.Printf(
-		"Loaded issue: %s\n",
-		issue.Key,
-	)
+	fmt.Printf("Loaded issue: %s\n", issue.Key)
 
-	files, err := os.ReadDir(
-		attachmentsDir,
-	)
+	// ======================================================
+	// ALWAYS SYNC ATTACHMENTS (no folder-length shortcut)
+	// ======================================================
 
+	fmt.Println("Syncing Jira attachments...")
+
+	err = jiraClient.DownloadAttachments(issue, attachmentsDir)
+	if err != nil {
+		log.Fatalf("attachment sync failed: %v", err)
+	}
+
+	files, err := os.ReadDir(attachmentsDir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Download attachments only if folder is empty
-	if len(files) == 0 {
+	fmt.Printf("\nFound %d attachment(s)\n\n", len(files))
 
-		fmt.Println(
-			"Downloading attachments...",
-		)
-
-		err = jiraClient.DownloadAttachments(
-			issue,
-			attachmentsDir,
-		)
-
-		if err != nil {
-			log.Fatalf(
-				"attachment download failed: %v",
-				err,
-			)
-		}
-
-		files, err = os.ReadDir(
-			attachmentsDir,
-		)
-
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	fmt.Printf(
-		"\nFound %d attachment(s)\n\n",
-		len(files),
-	)
+	// ======================================================
+	// ANALYSIS PIPELINE
+	// ======================================================
 
 	var allFacts []models.Fact
 
@@ -142,113 +95,61 @@ func main() {
 			continue
 		}
 
-		path := filepath.Join(
-			attachmentsDir,
-			file.Name(),
-		)
+		path := filepath.Join(attachmentsDir, file.Name())
 
-		attachmentType, err := classifier.Classify(
-			path,
-		)
-
+		attachmentType, err := classifier.Classify(path)
 		if err != nil {
-
-			log.Printf(
-				"classification failed: %s : %v",
-				path,
-				err,
-			)
-
+			log.Printf("classification failed: %s : %v", path, err)
 			continue
 		}
 
-		fmt.Printf(
-			"Processing %s (%s)\n",
-			file.Name(),
-			attachmentType,
-		)
+		fmt.Printf("Processing %s (%s)\n", file.Name(), attachmentType)
 
 		switch attachmentType {
 
 		case classifier.LogAttachment:
 
-			logFacts, err := logs.ParseLog(
-				path,
-			)
-
+			logFacts, err := logs.ParseLog(path)
 			if err != nil {
-
-				log.Printf(
-					"log parsing failed: %v",
-					err,
-				)
-
+				log.Printf("log parsing failed: %v", err)
 				continue
 			}
 
-			allFacts = append(
-				allFacts,
-				logFacts...,
-			)
+			allFacts = append(allFacts, logFacts...)
 
 		case classifier.ImageAttachment:
 
-			// future
-			fmt.Printf(
-				"Image analysis not implemented yet: %s\n",
-				file.Name(),
-			)
+			imageFacts, err := images.Analyze(path)
+			if err != nil {
+				log.Printf("image analysis failed: %v", err)
+				continue
+			}
+
+			allFacts = append(allFacts, imageFacts...)
 
 		default:
 
-			fmt.Printf(
-				"Skipping unsupported file: %s\n",
-				file.Name(),
-			)
+			fmt.Printf("Skipping unsupported file: %s\n", file.Name())
 		}
 	}
 
-	fmt.Printf(
-		"\nRaw facts extracted: %d\n",
-		len(allFacts),
-	)
+	fmt.Printf("\nRaw facts extracted: %d\n", len(allFacts))
 
-	correlatedFacts := facts.Correlate(
-		allFacts,
-	)
+	correlatedFacts := facts.Correlate(allFacts)
 
-	fmt.Printf(
-		"Facts after correlation: %d\n",
-		len(correlatedFacts),
-	)
+	fmt.Printf("Facts after correlation: %d\n", len(correlatedFacts))
 
-	rootCause := logs.DetectRootCause(
-		correlatedFacts,
-	)
+	rootCause := logs.DetectRootCause(correlatedFacts)
 
 	if rootCause != nil {
-
-		fmt.Printf(
-			"Root Cause Candidate: %s\n",
-			rootCause.Value,
-		)
+		fmt.Printf("Root Cause Candidate: %s\n", rootCause.Value)
 	}
 
-	kp := knowledge.Build(
-		ticketID,
-		correlatedFacts,
-	)
+	kp := knowledge.Build(ticketID, correlatedFacts)
 
-	outputFile := filepath.Join(
-		knowledgeDir,
-		"knowledge.json",
-	)
+	outputFile := filepath.Join(knowledgeDir, "knowledge.json")
 
-	err = export.SaveKnowledge(
-		outputFile,
-		kp,
-	)
-
+	err = export.SaveKnowledge(outputFile, kp)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -261,15 +162,9 @@ func main() {
 	fmt.Printf("Facts: %d\n", len(kp.Facts))
 
 	if rootCause != nil {
-		fmt.Printf(
-			"Root Cause: %s\n",
-			rootCause.Value,
-		)
+		fmt.Printf("Root Cause: %s\n", rootCause.Value)
 	}
 
-	fmt.Printf(
-		"Knowledge Package: %s\n",
-		outputFile,
-	)
+	fmt.Printf("Knowledge Package: %s\n", outputFile)
 	fmt.Println("======================================")
 }
