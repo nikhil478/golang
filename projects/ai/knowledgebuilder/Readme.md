@@ -59,3 +59,5 @@ internal/
     attachment.go
     fact.go
     knowledge.go
+
+docker run --env-file .env kbbuilder
