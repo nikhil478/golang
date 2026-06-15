@@ -1,0 +1,41 @@
+2026-06-13 09:15:21 INFO StorefrontWebApp User login request received userId=USR-1001
+2026-06-13 09:15:22 INFO AccountService Authentication successful userId=USR-1001
+2026-06-13 09:15:23 INFO API_GATEWAY Forwarding request to InventoryService correlationId=CORR-001
+
+2026-06-13 09:16:01 WARN InventoryService Product stock running low productId=PRD-500 qty=3
+2026-06-13 09:16:05 INFO InventoryDB Query executed table=Products durationMs=45
+
+2026-06-13 09:17:10 ERROR PaymentService Payment failed orderId=ORD-1001 amount=149.99
+2026-06-13 09:17:10 ERROR PaymentGateway Credit card authorization declined orderId=ORD-1001
+
+2026-06-13 09:18:42 INFO ShippingService Shipment creation started orderId=ORD-1001
+2026-06-13 09:18:44 ERROR ShippingService Kafka timeout topic=shipment-created correlationId=CORR-002
+2026-06-13 09:18:45 WARN ShippingService Retry attempt=1 correlationId=CORR-002
+
+2026-06-13 09:19:10 INFO MobileApp GET /api/account/profile
+2026-06-13 09:19:11 INFO API_GATEWAY Route matched service=AccountService
+2026-06-13 09:19:12 INFO AccountDB SELECT completed userId=USR-1001 durationMs=18
+
+2026-06-13 09:20:55 ERROR InventoryDB Connection pool exhausted maxConnections=50
+2026-06-13 09:20:56 ERROR InventoryService Failed to retrieve product catalog
+2026-06-13 09:20:57 WARN API_GATEWAY Returning HTTP 503 Service Unavailable
+
+2026-06-13 09:21:30 INFO Browser GET /products/PRD-500
+2026-06-13 09:21:31 INFO StorefrontWebApp Calling InventoryService
+2026-06-13 09:21:32 ERROR InventoryService Request timeout after 30000ms
+
+2026-06-13 09:22:15 WARN AccountService Multiple failed login attempts userId=USR-2002
+2026-06-13 09:22:18 ERROR AuthProvider Token validation failed tokenId=JWT-8899
+
+2026-06-13 09:23:01 INFO API_GATEWAY Request started correlationId=CORR-003
+2026-06-13 09:23:02 INFO ShippingService Request received correlationId=CORR-003
+2026-06-13 09:23:03 INFO ShippingDB INSERT shipment record id=SHP-1001
+2026-06-13 09:23:04 INFO ShippingService Shipment created successfully id=SHP-1001
+
+2026-06-13 09:24:40 ERROR StorefrontWebApp Unhandled exception page=/checkout
+2026-06-13 09:24:41 ERROR API_GATEWAY Upstream service failure service=PaymentService
+2026-06-13 09:24:42 ERROR MobileApp Checkout failed orderId=ORD-1002
+
+2026-06-13 09:25:55 INFO HealthCheck AccountService status=Healthy
+2026-06-13 09:25:55 INFO HealthCheck InventoryService status=Degraded
+2026-06-13 09:25:55 INFO HealthCheck ShippingService status=Healthy
