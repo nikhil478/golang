@@ -8,7 +8,7 @@ import (
 
 func main() {
 
-	engine := engine.NewEngine()
+	engine := engine.NewEngine("greet.json")
 	if err := engine.Set("greet", []byte("HELLO NIKHIL !")); err != nil {
 		fmt.Printf("error while setting value in engine : %v \n", err)
 	}

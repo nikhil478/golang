@@ -12,9 +12,9 @@ type engineSVC struct {
 	storage storage.Storage
 }
 
-func NewEngine() Engine {
+func NewEngine(path string) Engine {
 	return &engineSVC{
-		storage: storage.NewInMemoryStorage(),
+		storage: storage.NewInMemoryStorage(path),
 	}
 }
 
