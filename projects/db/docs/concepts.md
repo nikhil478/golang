@@ -1,6 +1,6 @@
 1. In-memory KV Store
 2. Persistence
-3. Milestone 3
+// TODO: add logger then move to wal
 4. Write Ahead Log
 5. Memtable
 6. SSTables
