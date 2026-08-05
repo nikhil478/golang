@@ -15,11 +15,15 @@ func NewInMemoryStorage(relativePath string) Storage {
 		relativePath: relativePath,
 	}
 	_, err := os.Stat(relativePath)
+	if err != nil {
+		fmt.Printf("error while checking path , maybe we can ignore this for now")
+	}
+	table, err = inMemoryStorage.loadSnapshot()
+	if err != nil {
+		fmt.Printf("error while loading snapshot : %v , we can ignore this as well for now ", err)
+	}
 	if err == nil {
-		table, err = inMemoryStorage.loadSnapshot()
-		if err == nil {
-			inMemoryStorage.table = table
-		}
+		inMemoryStorage.table = table
 	}
 	return &inMemoryStorage
 }
@@ -32,12 +36,13 @@ type inMemoryStorage struct {
 
 func (db *inMemoryStorage) Set(key string, data []byte) error {
 	db.table[key] = data
-	db.saveSnapShot()
+	if err := db.saveSnapshot(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (db *inMemoryStorage) Get(key string) ([]byte, error) {
-	fmt.Printf("db state before getting value from db : %v \n", db.table)
 	val, ok := db.table[key]
 	if !ok {
 		return nil, common.ErrKeyNotFound
@@ -47,10 +52,13 @@ func (db *inMemoryStorage) Get(key string) ([]byte, error) {
 
 func (db *inMemoryStorage) Delete(key string) error {
 	delete(db.table, key)
+	if err := db.saveSnapshot(); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (db *inMemoryStorage) saveSnapShot() error {
+func (db *inMemoryStorage) saveSnapshot() error {
 	file, err := os.Create(db.relativePath)
 	if err != nil {
 		return err
